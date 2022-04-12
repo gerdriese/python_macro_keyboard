@@ -23,6 +23,7 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
 }
 
 **keyX**: key1 bis key8 - key0 kann nicht konfiguriert werden. Dieser ist der Taster des Encoders und wird für Mute verwendet.
+
 **Aktion**:
   * **P** Press - Parameter 
   * **U** Up - Parameter
@@ -34,6 +35,10 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   * Bei **P** und **U** die Taste die gedrückt bzw. wieder losgelassen werden soll
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt.
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
-    
-    
-  
+
+  ## boot.py
+  Die Datei boot.py verhindert, dass das USB Laufwerk beim anschließen der Tastatur eingebunden wird. Im Normalfall wird
+  man das Laufwerk nicht benötigen.
+  Um das Laufwerk dennoch zu sehen um z.B. die keyconf.json zu ändern wird in der boot.py der Taster des Encoders abgefragt.
+  Ist dieser beim Einschalten / -stecken gedrückt, wird das Laufwerk eingebunden. Dies funktioniert nur bei einem Hard-Reset.
+  Ein Neustart über die REPL Console über den virtuellen COM Port reicht nicht.

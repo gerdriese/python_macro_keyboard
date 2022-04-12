@@ -1,10 +1,10 @@
 # Allgemeine Imports
-
 import time
 import board
 import neopixel
 import usb_hid
 import json
+import storage
 
 
 # HTL Bibliothek
@@ -20,18 +20,32 @@ from adafruit_hid.consumer_control import ConsumerControl
 # Definitionen
 PIXEL_PIN = board.GP28
 ORDER = neopixel.GRB
+# Anzahl der RGB Leds ist 11 - 0 bis 7 sind unter den Tastern 1 bis 8, die LEDS 8, 9 und 10 
+# befinden sich unter dem Raspberry Pi Pico
 NUM_PIXELS = 11
+# Nur die ersten acht LEDS werden für den Color Change herangezogen
 COLOR_CHANGE = 8
-DEBUG = True
+# Farbdefinitionen
+COLOR_FILE_NOT_FOUND = 0xFF3300  # Konfigurationsdatei konnte nicht gelesen werden
+COLOR_FORMAT_ERROR = 0x330000    # Konfigurationsdatei nicht gefunden oder fehlerhaft
+COLOR_UNKNOWN = 0x424242         # Kommando nicht bekannt
+COLOR_UNDEFINED = 0x0000FF       # Kein Kommando für die Taste hinterlegt
+
+# Sollen Debugmeldungen auf die serielle Schnittstelle ausgegeben werden?
+DEBUG = False
 
 # Initialisierung:
 pixels = neopixel.NeoPixel(
     PIXEL_PIN, NUM_PIXELS, brightness=0.2, auto_write=False, pixel_order=ORDER
 )
+
 hw_keyboard = HtlKeyboard()
+
 consumer_control = ConsumerControl(usb_hid.devices)
 sw_keyboard = Keyboard(usb_hid.devices)
+
 keyboard_layout = KeyboardLayout(sw_keyboard)
+
 encoder = 0
 pixelcount = 0
 leds_on = True
@@ -93,50 +107,73 @@ def send_keys(keypressed: str) -> None:
             # T: Text ausgeben
             elif command[0] == "T":
                 keyboard_layout.write(command[1])
+            # Unbekanntes Kommando
+            else:
+                pixels.fill(COLOR_UNKNOWN)
+                pixels.show()
+                time.sleep(1)
+                pixels.show()
     else:
-        pixels.fill(0x0000FF)
+        pixels.fill(COLOR_UNDEFINED)
         pixels.show()
         time.sleep(1)
         pixels.fill(0x000000)
         pixels.show()
 
 #Konfiguration einlesen:
-
-try:
-    with open("keyconf.json") as f:
-        keyconf = json.load(f)
-except OSError as e:
-    debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
-    pixels.fill(0xFF3300)
-    pixels.show()
-    while True:
-        pass
-except ValueError as e:
-    debugprint(f"Fehler in der Konfiguratioinsdatei!\n{e}")
-    pixels.fill(0x330000)
-    pixels.show()
-    while True:
-        pass
+def read_config_from_file() -> json:
+    try:
+        with open("keyconf.json", "r") as f:
+            keyconf = json.load(f)
+    except OSError as e:
+        debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
+        pixels.fill(COLOR_FILE_NOT_FOUND)
+        pixels.show()
+        while True:
+            pass
+    except ValueError as e:
+        debugprint(f"Fehler in der Konfiguratioinsdatei!\n{e}")
+        pixels.fill(COLOR_FORMAT_ERROR)
+        pixels.show()
+        while True:
+            pass
+    return keyconf
 
 # Hauptprogramm:
+
+# Konfiguration der Tasten einlesen
+keyconf = read_config_from_file()
+
+# Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden -> 
+# wir verwenden hier bewusst eine Endlosschleife
 while True:
     keys_pressed = hw_keyboard.key_pressed_debounced()
     new_encoder = hw_keyboard.get_encoder_value()
 
-    # Eine Taste wurde gedrückt
-    if len(keys_pressed) == 1:
+    # Eine oder mehrere Tasten wurden gedrückt
+    if len(keys_pressed):
         debugprint(keys_pressed)
+
+    # Genau Eine Taste wurde gedrückt:
+    if len(keys_pressed) == 1:
+        # Key 0 -> Mute / Unmute
         if "key0" in keys_pressed:
             consumer_control.send(ConsumerControlCode.MUTE)
         else:
             send_keys(keys_pressed[0])
 
+    # Konfigurationsdate neu einlesen (Tasten 5 und 8 gleichzeitig drücken)
+    # Eigentlich unnützer Code - ein Schreibvorgang auf die Partition löst automatisch einen Soft
+    # Reboot aus! Aber zu Demonstationszwecken bleibt der Code.
+    if len(keys_pressed) == 2 and ["key5", "key8"] == keys_pressed:
+        keyconf = read_config_from_file()
+
     # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken) 
     if len(keys_pressed) == 3 and ["key6", "key7", "key8"] == keys_pressed:
-        debugprint(keys_pressed)
         if leds_on == True:
             leds_on = False
-            pixels.fill((0, 0, 0))
+            pixels.fill(0x000000)
+            pixels.show()
         else:
             leds_on = True
 
@@ -158,5 +195,5 @@ while True:
         for i in range(COLOR_CHANGE):
             pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
             pixels[i] = wheel(pixel_index & 255)
-    pixels.show()
+        pixels.show()
     time.sleep(0.03)
