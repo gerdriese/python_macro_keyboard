@@ -5,7 +5,6 @@ import neopixel
 import usb_hid
 import json
 
-
 # HTL Bibliothek
 from lib.htl_keyboard import HtlKeyboard
 
@@ -19,16 +18,16 @@ from adafruit_hid.consumer_control import ConsumerControl
 # Definitionen
 PIXEL_PIN = board.GP28
 ORDER = neopixel.GRB
-# Anzahl der RGB Leds ist 11 - 0 bis 7 sind unter den Tastern 1 bis 8, die LEDS 8, 9 und 10 
+# Anzahl der RGB Leds ist 11 - 0 bis 7 sind unter den Tastern 1 bis 8, die LEDS 8, 9 und 10
 # befinden sich unter dem Raspberry Pi Pico
 NUM_PIXELS = 11
 # Nur die ersten acht LEDS werden für den Color Change herangezogen
 COLOR_CHANGE = 8
 # Farbdefinitionen
 COLOR_FILE_NOT_FOUND = 0xFF3300  # Konfigurationsdatei konnte nicht gelesen werden
-COLOR_FORMAT_ERROR = 0x330000    # Konfigurationsdatei nicht gefunden oder fehlerhaft
-COLOR_UNKNOWN = 0x424242         # Kommando nicht bekannt
-COLOR_UNDEFINED = 0x0000FF       # Kein Kommando für die Taste hinterlegt
+COLOR_FORMAT_ERROR = 0x330000  # Konfigurationsdatei nicht gefunden oder fehlerhaft
+COLOR_UNKNOWN = 0x424242  # Kommando nicht bekannt
+COLOR_UNDEFINED = 0x0000FF  # Kein Kommando für die Taste hinterlegt
 
 # Sollen Debugmeldungen auf die serielle Schnittstelle ausgegeben werden?
 DEBUG = False
@@ -85,21 +84,21 @@ def wheel(pos: int) -> tuple:
         r = 0
         g = int(pos * 3)
         b = int(255 - pos * 3)
-    # Spannendes return voraus - return <Tupel A> if <Bedingung> else <Tupel B>... Ja - das gibt's auch :) 
+    # Spannendes return voraus - return <Tupel A> if <Bedingung> else <Tupel B>... Ja - das gibt's auch :)
     return (r, g, b) if ORDER in (neopixel.RGB, neopixel.GRB) else (r, g, b, 0)
 
 
 def send_keys(keypressed: str) -> None:
     if keypressed in keyconf:
         for command in keyconf[keypressed]:
-            # sicher ist SICHER ;) 
+            # sicher ist SICHER ;)
             command[0] = command[0].upper()
             # P: Key Press - Taste drücken und gedrückt halten
-            if command[0] == "P":  
-                sw_keyboard.press(getattr(Keycode,command[1]))
+            if command[0] == "P":
+                sw_keyboard.press(getattr(Keycode, command[1]))
             # U: Key Up - Taste loslassen
             elif command[0] == "U":
-                sw_keyboard.release(getattr(Keycode,command[1]))
+                sw_keyboard.release(getattr(Keycode, command[1]))
             # R: Release - Alle Tasten loslassen
             elif command[0] == "R":
                 sw_keyboard.release_all()
@@ -111,7 +110,7 @@ def send_keys(keypressed: str) -> None:
                 keyboard_layout.write(command[1])
             # M: Consumer Control / Multimedia Kommando
             elif command[0] == "C":
-                consumer_control.send(getattr(ConsumerControlExtended,command[1]))
+                consumer_control.send(getattr(ConsumerControlExtended, command[1]))
             # Unbekanntes Kommando
             else:
                 pixels.fill(COLOR_UNKNOWN)
@@ -125,7 +124,8 @@ def send_keys(keypressed: str) -> None:
         pixels.fill(0x000000)
         pixels.show()
 
-#Konfiguration einlesen:
+
+# Konfiguration einlesen:
 def read_config_from_file() -> json:
     try:
         with open("keyconf.json", "r") as f:
@@ -144,12 +144,13 @@ def read_config_from_file() -> json:
             pass
     return keyconf
 
+
 # Hauptprogramm:
 
 # Konfiguration der Tasten einlesen
 keyconf = read_config_from_file()
 
-# Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden -> 
+# Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden ->
 # wir verwenden hier bewusst eine Endlosschleife
 while True:
     # Tastendrücke abfragen - keys_pressed liefert eine Liste zurück - wenn diese nicht leer ist, wurde mindestens eine Taste gedrückt
@@ -169,7 +170,7 @@ while True:
         else:
             send_keys(keys_pressed[0])
 
-    # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken) 
+    # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken)
     if len(keys_pressed) == 3 and ["key6", "key7", "key8"] == keys_pressed:
         if leds_on == True:
             leds_on = False
