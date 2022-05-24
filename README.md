@@ -24,16 +24,16 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
 
 **keyX**: key1 bis key8 - key0 kann nicht konfiguriert werden. Dieser ist der Taster des Encoders und wird für Mute verwendet.
 
-**Aktion**:
-  * **P** Press - Parameter
-  * **U** Up - Parameter
-  * **R** Release - kein Parameter
-  * **T** Text - Parameter 
-  * **C** Consumer-Control - Parameter
-  * **D** Delay - Parameter
+**Aktion** - einer der folgenden Buchstaben:
+  * **P** - Press - Parameter
+  * **U** - Up - Parameter
+  * **R** - Release - kein Parameter
+  * **T** - Text - Parameter 
+  * **C** - Consumer-Control - Parameter
+  * **D** - Delay - Parameter
 
 **Parameter**:
-  * Bei **P** und **U** die Taste die gedrückt bzw. wieder losgelassen werden soll. (lib/keycode_win_de.py)
+  * Bei **P** und **U**: Jene Taste, welche gedrückt bzw. wieder losgelassen werden soll. (lib/keycode_win_de.py)
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt. 
   * Bei **C**: Die Fernbedienungstaste die gedrückt werden soll. (lib/consumer_control_extended.py)
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
