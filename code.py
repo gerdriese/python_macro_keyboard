@@ -4,17 +4,16 @@ import board
 import neopixel
 import usb_hid
 import json
-import storage
 
 
 # HTL Bibliothek
-from htl_keyboard import HtlKeyboard
+from lib.htl_keyboard import HtlKeyboard
 
 # Tastatur - Adafruit Code mit DE Erweiterung
 from adafruit_hid.keyboard import Keyboard
 from keyboard_layout_win_de import KeyboardLayout
 from keycode_win_de import Keycode
-from adafruit_hid.consumer_control_code import ConsumerControlCode
+from consumer_control_extended import ConsumerControlExtended
 from adafruit_hid.consumer_control import ConsumerControl
 
 # Definitionen
@@ -39,11 +38,11 @@ pixels = neopixel.NeoPixel(
     PIXEL_PIN, NUM_PIXELS, brightness=0.2, auto_write=False, pixel_order=ORDER
 )
 
-hw_keyboard = HtlKeyboard()
-
+# USB Endpoints
 consumer_control = ConsumerControl(usb_hid.devices)
 sw_keyboard = Keyboard(usb_hid.devices)
 
+hw_keyboard = HtlKeyboard()
 keyboard_layout = KeyboardLayout(sw_keyboard)
 
 encoder = 0
@@ -86,6 +85,7 @@ def wheel(pos: int) -> tuple:
         r = 0
         g = int(pos * 3)
         b = int(255 - pos * 3)
+    # Spannendes return voraus - return <Tupel A> if <Bedingung> else <Tupel B>... Ja - das gibt's auch :) 
     return (r, g, b) if ORDER in (neopixel.RGB, neopixel.GRB) else (r, g, b, 0)
 
 
@@ -107,6 +107,9 @@ def send_keys(keypressed: str) -> None:
             # T: Text ausgeben
             elif command[0] == "T":
                 keyboard_layout.write(command[1])
+            # M: Consumer Control / Multimedia Kommando
+            elif command[0] == "C":
+                consumer_control.send(getattr(ConsumerControlExtended,command[1]))
             # Unbekanntes Kommando
             else:
                 pixels.fill(COLOR_UNKNOWN)
@@ -147,6 +150,8 @@ keyconf = read_config_from_file()
 # Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden -> 
 # wir verwenden hier bewusst eine Endlosschleife
 while True:
+    # Tastendrücke abfragen - keys_pressed liefert eine Liste zurück - wenn diese nicht leer ist, wurde mindestens eine Taste gedrückt
+    # get_encoder_value liefert den aktuellen Wert des Drehencoders zurück - so kann später überprüft werden, ob er gedreht wurde.
     keys_pressed = hw_keyboard.key_pressed_debounced()
     new_encoder = hw_keyboard.get_encoder_value()
 
@@ -158,15 +163,9 @@ while True:
     if len(keys_pressed) == 1:
         # Key 0 -> Mute / Unmute
         if "key0" in keys_pressed:
-            consumer_control.send(ConsumerControlCode.MUTE)
+            consumer_control.send(ConsumerControlExtended.MUTE)
         else:
             send_keys(keys_pressed[0])
-
-    # Konfigurationsdate neu einlesen (Tasten 5 und 8 gleichzeitig drücken)
-    # Eigentlich unnützer Code - ein Schreibvorgang auf die Partition löst automatisch einen Soft
-    # Reboot aus! Aber zu Demonstationszwecken bleibt der Code.
-    if len(keys_pressed) == 2 and ["key5", "key8"] == keys_pressed:
-        keyconf = read_config_from_file()
 
     # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken) 
     if len(keys_pressed) == 3 and ["key6", "key7", "key8"] == keys_pressed:
@@ -180,9 +179,10 @@ while True:
     # Lautstärkeregelung
     if encoder != new_encoder:
         if encoder < new_encoder:
-            consumer_control.send(ConsumerControlCode.VOLUME_INCREMENT)
+            consumer_control.send(ConsumerControlExtended.VOLUME_UP)
         else:
-            consumer_control.send(ConsumerControlCode.VOLUME_DECREMENT)
+            consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
+        # den "neuen" Encoder Wert speichern damit wir die nächste Änderung mitbekommen...
         encoder = new_encoder
         debugprint(f"Neuer Encoderwert: {encoder}")
 
