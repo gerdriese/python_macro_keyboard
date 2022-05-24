@@ -92,6 +92,8 @@ def wheel(pos: int) -> tuple:
 def send_keys(keypressed: str) -> None:
     if keypressed in keyconf:
         for command in keyconf[keypressed]:
+            # sicher ist SICHER ;) 
+            command[0] = command[0].upper()
             # P: Key Press - Taste drücken und gedrückt halten
             if command[0] == "P":  
                 sw_keyboard.press(getattr(Keycode,command[1]))
