@@ -10,13 +10,13 @@
     ["P","F4"],
     ["R"]
   ],
-  "key4": [
-    ["P", "ALT"],
-    ["P", "F4"],
-    ["U", "F4"],
-    ["U", "ALT"]
-  ],
   "key5": [
     ["T", "Hallo Welt!"]
+  ],
+  "key7": [
+    ["Test for unknown command color"]
+  ],
+  "key8": [
+    ["F", "colorchange"]
   ]
 }

@@ -30,12 +30,11 @@ COLOR_UNKNOWN = 0x424242  # Kommando nicht bekannt
 COLOR_UNDEFINED = 0x0000FF  # Kein Kommando für die Taste hinterlegt
 
 # Sollen Debugmeldungen auf die serielle Schnittstelle ausgegeben werden?
-DEBUG = False
+DEBUG = True
 
 # Initialisierung:
-pixels = neopixel.NeoPixel(
-    PIXEL_PIN, NUM_PIXELS, brightness=0.2, auto_write=False, pixel_order=ORDER
-)
+pixels = neopixel.NeoPixel(PIXEL_PIN, NUM_PIXELS,
+                           brightness=0.2, auto_write=False, pixel_order=ORDER)
 
 # USB Endpoints
 consumer_control = ConsumerControl(usb_hid.devices)
@@ -47,6 +46,17 @@ keyboard_layout = KeyboardLayout(sw_keyboard)
 encoder = 0
 pixelcount = 0
 leds_on = True
+colormode = "wave"
+COLOR_MODES = ["wave", "single", "wheel"]
+current_color = 0
+
+
+def colorchange():
+    global colormode
+    pixels.fill(0x000000)
+    colormode = COLOR_MODES[(COLOR_MODES.index(
+        colormode) + 1) % len(COLOR_MODES)]
+    debugprint(f"Colormode ist jetzt {colormode}")
 
 
 def debugprint(outtext: str) -> None:
@@ -110,12 +120,25 @@ def send_keys(keypressed: str) -> None:
                 keyboard_layout.write(command[1])
             # M: Consumer Control / Multimedia Kommando
             elif command[0] == "C":
-                consumer_control.send(getattr(ConsumerControlExtended, command[1]))
+                consumer_control.send(
+                    getattr(ConsumerControlExtended, command[1]))
+            # F: Funktion ausführen
+            elif command[0] == "F":
+                if len(command) == 2:
+                    globals()[command[1]]()
+                elif len(command) == 3:
+                    globals()[command[1]](command[2])
+                else:
+                    pixels.fill(COLOR_UNKNOWN)
+                    pixels.show()
+                    time.sleep(1)
+                    pixels.show()
             # Unbekanntes Kommando
             else:
                 pixels.fill(COLOR_UNKNOWN)
                 pixels.show()
                 time.sleep(1)
+                pixels.fill(0x000000)
                 pixels.show()
     else:
         pixels.fill(COLOR_UNDEFINED)
@@ -132,16 +155,24 @@ def read_config_from_file() -> json:
             keyconf = json.load(f)
     except OSError as e:
         debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
-        pixels.fill(COLOR_FILE_NOT_FOUND)
-        pixels.show()
         while True:
-            pass
+            pixels.fill(COLOR_FILE_NOT_FOUND)
+            pixels.show()
+            time.sleep(.4)
+            pixels.fill(0x000000)
+            pixels.show()
+            time.sleep(.3)
+
     except ValueError as e:
         debugprint(f"Fehler in der Konfiguratioinsdatei!\n{e}")
-        pixels.fill(COLOR_FORMAT_ERROR)
-        pixels.show()
         while True:
-            pass
+            pixels.fill(COLOR_FORMAT_ERROR)
+            pixels.show()
+            time.sleep(.4)
+            pixels.fill(0x000000)
+            pixels.show()
+            time.sleep(.3)
+
     return keyconf
 
 
@@ -181,22 +212,32 @@ while True:
 
     # Lautstärkeregelung
     if encoder != new_encoder:
-        if encoder < new_encoder:
-            consumer_control.send(ConsumerControlExtended.VOLUME_UP)
+        if leds_on == True and hw_keyboard.key8:
+            current_color = (current_color + 5) % 256
         else:
-            consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
+            if encoder < new_encoder:
+                consumer_control.send(ConsumerControlExtended.VOLUME_UP)
+            else:
+                consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
         # den "neuen" Encoder Wert speichern damit wir die nächste Änderung mitbekommen...
         encoder = new_encoder
         debugprint(f"Neuer Encoderwert: {encoder}")
-
-    # Wheel:
-    pixelcount += 3
-    if pixelcount > 255:
-        pixelcount -= 255
-
+    
+    # Leds darstellen
     if leds_on:
-        for i in range(COLOR_CHANGE):
-            pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
-            pixels[i] = wheel(pixel_index & 255)
+        if colormode == "wave":
+            pixelcount = (pixelcount + 3) % 256
+            # Wheel:
+            for i in range(COLOR_CHANGE):
+                pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
+                pixels[i] = wheel(pixel_index & 255)
+        elif colormode == "single":
+
+            pixels.fill(wheel(current_color))
+
+        elif colormode == "wheel":
+            pixelcount = (pixelcount + 1) % 256
+            pixels.fill(wheel(pixelcount & 255))
         pixels.show()
+
     time.sleep(0.03)
