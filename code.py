@@ -28,6 +28,8 @@ COLOR_FILE_NOT_FOUND = 0xFF3300  # Konfigurationsdatei konnte nicht gelesen werd
 COLOR_FORMAT_ERROR = 0x330000  # Konfigurationsdatei nicht gefunden oder fehlerhaft
 COLOR_UNKNOWN = 0x424242  # Kommando nicht bekannt
 COLOR_UNDEFINED = 0x0000FF  # Kein Kommando für die Taste hinterlegt
+COLOR_LOAD_SUCCESS = 0x00FF00  # Datei korrekt geladen
+COLOR_EMPTY = 0x000000  # Led ausschalten
 
 # Sollen Debugmeldungen auf die serielle Schnittstelle ausgegeben werden?
 DEBUG = True
@@ -46,18 +48,32 @@ keyboard_layout = KeyboardLayout(sw_keyboard)
 encoder = 0
 pixelcount = 0
 leds_on = True
-colormode = "wave"
 COLOR_MODES = ["wave", "single", "wheel"]
 current_color = 0
+remember_keys = set()
+leds_on = True
 
+# ----------------------- Hier die zusätzlichen Funktionen hinschreiben ----------------------- #
+
+
+
+# ============================================================================================= #
 
 def colorchange():
     global colormode
-    pixels.fill(0x000000)
+    pixels.fill(COLOR_EMPTY)
     colormode = COLOR_MODES[(COLOR_MODES.index(
         colormode) + 1) % len(COLOR_MODES)]
     debugprint(f"Colormode ist jetzt {colormode}")
 
+def ledtoggle():
+    global leds_on
+    if leds_on == True:
+        leds_on = False
+        pixels.fill(COLOR_EMPTY)
+        pixels.show()
+    else:
+        leds_on = True
 
 def debugprint(outtext: str) -> None:
     """debugprint Ausgabe über die Serielle Schnittstelle - Ist die globale Variable DEBUG True, wird der Text ausgegeben
@@ -98,9 +114,10 @@ def wheel(pos: int) -> tuple:
     return (r, g, b) if ORDER in (neopixel.RGB, neopixel.GRB) else (r, g, b, 0)
 
 
-def send_keys(keypressed: str) -> None:
-    if keypressed in keyconf:
-        for command in keyconf[keypressed]:
+def send_keys(keyspressed: tuple):
+    debugprint(f"Attempting to send key(s) {keyspressed}")
+    if keyspressed in keyconf:
+        for command in keyconf[keyspressed]:
             # sicher ist SICHER ;)
             command[0] = command[0].upper()
             # P: Key Press - Taste drücken und gedrückt halten
@@ -138,13 +155,13 @@ def send_keys(keypressed: str) -> None:
                 pixels.fill(COLOR_UNKNOWN)
                 pixels.show()
                 time.sleep(1)
-                pixels.fill(0x000000)
+                pixels.fill(COLOR_EMPTY)
                 pixels.show()
     else:
         pixels.fill(COLOR_UNDEFINED)
         pixels.show()
         time.sleep(1)
-        pixels.fill(0x000000)
+        pixels.fill(COLOR_EMPTY)
         pixels.show()
 
 
@@ -153,13 +170,30 @@ def read_config_from_file() -> json:
     try:
         with open("keyconf.json", "r") as f:
             keyconf = json.load(f)
+        for k in keyconf:
+            if "+" in k:
+                new = tuple(sorted(k.split("+")))
+                keyconf[new] = keyconf[k]
+                del keyconf[k]
+        
+        for i in [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8]:
+            pixels[i] = COLOR_LOAD_SUCCESS
+            pixels.show()
+            time.sleep(0.1)
+        pixels.fill(COLOR_EMPTY)
+        time.sleep(0.5)
+        # pixels.fill(COLOR_LOAD_SUCCESS)
+        # pixels.show()
+        # time.sleep(1)
+        # pixels.fill(COLOR_EMPTY)
+            
     except OSError as e:
         debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
         while True:
             pixels.fill(COLOR_FILE_NOT_FOUND)
             pixels.show()
             time.sleep(.4)
-            pixels.fill(0x000000)
+            pixels.fill(COLOR_EMPTY)
             pixels.show()
             time.sleep(.3)
 
@@ -169,7 +203,7 @@ def read_config_from_file() -> json:
             pixels.fill(COLOR_FORMAT_ERROR)
             pixels.show()
             time.sleep(.4)
-            pixels.fill(0x000000)
+            pixels.fill(COLOR_EMPTY)
             pixels.show()
             time.sleep(.3)
 
@@ -180,6 +214,8 @@ def read_config_from_file() -> json:
 
 # Konfiguration der Tasten einlesen
 keyconf = read_config_from_file()
+color_change_key = keyconf.get('color_change_key', 'key8')
+colormode = keyconf.get('colormode', "wave")
 
 # Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden ->
 # wir verwenden hier bewusst eine Endlosschleife
@@ -193,29 +229,22 @@ while True:
     if len(keys_pressed):
         debugprint(keys_pressed)
 
-    # Genau Eine Taste wurde gedrückt:
-    if len(keys_pressed) == 1:
-        # Key 0 -> Mute / Unmute
-        if "key0" in keys_pressed:
-            consumer_control.send(ConsumerControlExtended.MUTE)
-        else:
-            send_keys(keys_pressed[0])
+    # Genau Eine Taste wurde gedrückt und Key 0 -> Mute / Unmute:
+    if len(keys_pressed) == 1 and keys_pressed[0] == "key0":
+        consumer_control.send(ConsumerControlExtended.MUTE)
+    elif len(keys_pressed) > 0:
+        send_keys(tuple(keys_pressed) if len(keys_pressed) > 1 else keys_pressed[0])
 
-    # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken)
-    if len(keys_pressed) == 3 and ["key6", "key7", "key8"] == keys_pressed:
-        if leds_on == True:
-            leds_on = False
-            pixels.fill(0x000000)
-            pixels.show()
-        else:
-            leds_on = True
-
-    # Lautstärkeregelung
     if encoder != new_encoder:
-        if leds_on == True and hw_keyboard.key8:
-            current_color = (current_color + 5) % 256
-        else:
+        # Wenn Taste 8 gedrückt ist, wird aus dem Lautstärkeregler ein Farbregler
+        if leds_on == True and hw_keyboard.__getattr__(color_change_key):
             if encoder < new_encoder:
+                current_color = (current_color + 7) % 256
+            else:
+                current_color = (current_color - 7) % 256
+        # Lautstärkeregelung
+        else:
+            if encoder > new_encoder:
                 consumer_control.send(ConsumerControlExtended.VOLUME_UP)
             else:
                 consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
@@ -232,12 +261,12 @@ while True:
                 pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
                 pixels[i] = wheel(pixel_index & 255)
         elif colormode == "single":
-
             pixels.fill(wheel(current_color))
 
         elif colormode == "wheel":
             pixelcount = (pixelcount + 1) % 256
             pixels.fill(wheel(pixelcount & 255))
+        
         pixels.show()
-
     time.sleep(0.03)
+

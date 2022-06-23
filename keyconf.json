@@ -14,9 +14,14 @@
     ["T", "Hallo Welt!"]
   ],
   "key7": [
-    ["Test for unknown command color"]
+    ["Test for unknown command"]
   ],
   "key8": [
     ["F", "colorchange"]
-  ]
+  ],
+  "key6+key7": [
+    ["F", "ledtoggle"]
+  ],
+  "color_change_key": "key8",
+  "ctrl_key": 0
 }

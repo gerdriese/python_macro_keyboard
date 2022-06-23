@@ -13,16 +13,22 @@ Featueres:
 
 
 Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgendem Format:
-
+``` 
 {
  "keyX": [
      ["Aktion", "Parameter"],
      ["Aktion", "Parameter"],
      ...
      ],
+  "keyY": ...,
+  "keyX+keyZ": ...,
+  "color_change_key": "key8"
 }
+```
 
-**keyX**: key1 bis key8 - key0 kann nicht konfiguriert werden. Dieser ist der Taster des Encoders und wird für Mute verwendet.
+
+**keyX,keyY,keyZ**: key1 bis key8 - Kann mit einem + für Tastenkombinationen aneinander gehängt werden.
+**Hinweis**: Damit eine Tastenkombination (oder irgendeine Taste) aktiviert wird *müssen* alle und *dürfen* nur die angegeben Tasten gedrückt werden.
 
 **Aktion** - einer der folgenden Buchstaben:
   * **P** - Press - Parameter
@@ -31,12 +37,19 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   * **T** - Text - Parameter 
   * **C** - Consumer-Control - Parameter
   * **D** - Delay - Parameter
+  * **F** - Funktion ausführen - Parameter
 
 **Parameter**:
   * Bei **P** und **U**: Jene Taste, welche gedrückt bzw. wieder losgelassen werden soll. (lib/keycode_win_de.py)
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt. 
   * Bei **C**: Die Fernbedienungstaste die gedrückt werden soll. (lib/consumer_control_extended.py)
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
+  * Bei **F**: Name der Funktion die ausgeführt werden soll. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
+
+**color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten
+
+**std_colormode**: Der Standard Farbmodus. Standardmäßig "wave"
+
 
   ## boot.py
   Die Datei boot.py verhindert, dass das USB Laufwerk beim anschließen der Tastatur eingebunden wird. Im Normalfall wird
