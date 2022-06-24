@@ -1,19 +1,5 @@
 {
   "key0": [["C", "MUTE"]],
-  "key1": [["C", "PLAY"]],
-  "key2": [["C", "PAUSE"]],
-  "key3": [
-    ["P", "WINDOWS"],
-    ["P", "E"],
-    ["R"],
-    ["D",3],
-    ["P","ALT"],
-    ["P","F4"],
-    ["R"]
-  ],
-  "key5": [
-    ["T", "Hallo Welt!"]
-  ],
   "key7": [
     ["Test for unknown command"]
   ],
@@ -23,7 +9,9 @@
   "key6+key7": [
     ["F", "ledtoggle"]
   ],
+  "key1+key4+key8": [
+    ["F", "init_catch"]
+  ],
   "color_change_key": "key8",
-  "rage_quit_keys": 5,
-  "startup_leds": [8, 9, 10, 5, 6, 7, 4, 3, 2, 0, 1]
+  "rage_quit_keys": 5
 }

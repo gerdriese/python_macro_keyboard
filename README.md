@@ -2,6 +2,7 @@
 
 Hier wird der Sourcecode für das CABS Projekt des ersten Jahrganges an der HTL St. Pölten Abteilung Informatik zur Verfügung gestellt.
 
+
 Es geht um ein Macro Keyboard mit einem Raspberry Pi Pico und Circuitpython.
 
 Featueres:
@@ -24,7 +25,8 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   "keyX+keyZ": ...,
   "color_change_key": "key8",
   "std_colormode": "single",
-  "rage_quit_keys": 5
+  "rage_quit_keys": 5,
+  "startup_leds": [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8]
 }
 ```
 
@@ -46,15 +48,21 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt. 
   * Bei **C**: Die Fernbedienungstaste die gedrückt werden soll. (lib/consumer_control_extended.py)
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
-  * Bei **F**: Name der zusätzlichen Funktion die ausgeführt werden soll. Schon enthalten sind die Funktionen "colormodechange", welche den Farbmodus wechselt und "ledtoggle", welche die LEDs an- oder ausschaltet. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
+  * Bei **F**: Name der zusätzlichen Funktion die ausgeführt werden soll. Schon enthalten sind die Funktionen "colormodechange", welche den Farbmodus wechselt, "ledtoggle", welche die LEDs an- oder ausschaltet und "init_catch", welche das kleine Spiel startet. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
 
-**color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten
+#### Zusatzeigenschaften:
 
-**std_colormode**: Der Standard Farbmodus. Mögliche Werte sind "wave", "single" und "wheel". Standardmäßig "wave"
+  * **color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten
 
-**rage_quit_keys**: Wenn die Anzahl der gedrückten Tasten gleich oder höher als ist, wird das aktuelle Fenster geschlossen. Standardmäßig deaktiviert. Wenn das passiert, werden alle folgenden Aktionen nicht ausgeführt.
+  * **std_colormode**: Der Standard Farbmodus. Mögliche Werte sind "wave", "single" und "wheel". Standardmäßig "wave"
 
-**startup_leds**: Die Reihenfolge der LEDs beim Einschalten als Liste. Standardmäßig horizontal in Schlangenlinien von rechts oben nach links unten.
+  * **rage_quit_keys**: Wenn die Anzahl der gedrückten Tasten gleich oder höher als ist, wird das aktuelle Fenster geschlossen. Standardmäßig deaktiviert. Wenn das passiert, werden alle folgenden Aktionen nicht ausgeführt.
+
+  * **startup_leds**: Die Reihenfolge der LEDs beim Einschalten als Liste. Standardmäßig horizontal in Schlangenlinien von rechts oben nach links unten.
+
+  * **game_difficulty**: Das Delay zwischen den Bewegungen des Punktes im catch-game. Standardmäßig 8.
+
+**Hinweis**: Die oben genannten zusätzlichen Eigenschaften sind alle optional und haben Standardwerte, die verwendet werden, wenn die Eigenschaft nicht angegeben ist.
 
   ## boot.py
   Die Datei boot.py verhindert, dass das USB Laufwerk beim anschließen der Tastatur eingebunden wird. Im Normalfall wird
@@ -62,3 +70,8 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   Um das Laufwerk dennoch zu sehen um z.B. die keyconf.json zu ändern wird in der boot.py der Taster des Encoders abgefragt.
   Ist dieser beim Einschalten / -stecken gedrückt, wird das Laufwerk eingebunden. Dies funktioniert nur bei einem Hard-Reset.
   Ein Neustart über die REPL Console über den virtuellen COM Port reicht nicht.
+
+  ## Das catch-game
+  Kleines eingebautes Spiel, wenn einem langweilig ist. Standardmäßig ist es mit der Tastenkombination links-oben + mitte + rechts-unten erreichbar. Das Ziel ist es, den kleinen, sich bewegenden Punkt zu fangen, indem man im richtigen Moment die Leuchtende Taste drückt. Die drei LEDs links zeigen an wie viele Leben man noch hat (am Anfang 3). Jedes mal wenn mann daneben drückt, verliert man ein Leben. Wenn man alle Leben verloren hat, ist das Spiel aus. Außerdem kann man das Spiel zu jedem Zeipunkt, an dem keine Animation spielt mit dem Mute-Knopf beenden.
+
+Hinweis: Während das Spiel läuft, funktioniert nichts anderes auf der Tastatur
