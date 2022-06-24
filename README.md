@@ -13,7 +13,7 @@ Featueres:
 
 
 Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgendem Format:
-``` 
+```json
 {
  "keyX": [
      ["Aktion", "Parameter"],
@@ -22,7 +22,9 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
      ],
   "keyY": ...,
   "keyX+keyZ": ...,
-  "color_change_key": "key8"
+  "color_change_key": "key8",
+  "std_colormode": "single",
+  "rage_quit_keys": 5
 }
 ```
 
@@ -37,19 +39,22 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   * **T** - Text - Parameter 
   * **C** - Consumer-Control - Parameter
   * **D** - Delay - Parameter
-  * **F** - Funktion ausführen - Parameter
+  * **F** - zusätzliche Funktion ausführen - Parameter
 
 **Parameter**:
   * Bei **P** und **U**: Jene Taste, welche gedrückt bzw. wieder losgelassen werden soll. (lib/keycode_win_de.py)
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt. 
   * Bei **C**: Die Fernbedienungstaste die gedrückt werden soll. (lib/consumer_control_extended.py)
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
-  * Bei **F**: Name der Funktion die ausgeführt werden soll. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
+  * Bei **F**: Name der zusätzlichen Funktion die ausgeführt werden soll. Schon enthalten sind die Funktionen "colormodechange", welche den Farbmodus wechselt und "ledtoggle", welche die LEDs an- oder ausschaltet. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
 
 **color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten
 
-**std_colormode**: Der Standard Farbmodus. Standardmäßig "wave"
+**std_colormode**: Der Standard Farbmodus. Mögliche Werte sind "wave", "single" und "wheel". Standardmäßig "wave"
 
+**rage_quit_keys**: Wenn die Anzahl der gedrückten Tasten gleich oder höher als ist, wird das aktuelle Fenster geschlossen. Standardmäßig deaktiviert. Wenn das passiert, werden alle folgenden Aktionen nicht ausgeführt.
+
+**startup_leds**: Die Reihenfolge der LEDs beim Einschalten als Liste. Standardmäßig horizontal in Schlangenlinien von rechts oben nach links unten.
 
   ## boot.py
   Die Datei boot.py verhindert, dass das USB Laufwerk beim anschließen der Tastatur eingebunden wird. Im Normalfall wird

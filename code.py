@@ -48,9 +48,8 @@ keyboard_layout = KeyboardLayout(sw_keyboard)
 encoder = 0
 pixelcount = 0
 leds_on = True
-COLOR_MODES = ["wave", "single", "wheel"]
+COLOR_MODES = ["wave", "rainbow", "single", "wheel"]
 current_color = 0
-remember_keys = set()
 leds_on = True
 
 # ----------------------- Hier die zusätzlichen Funktionen hinschreiben ----------------------- #
@@ -59,7 +58,7 @@ leds_on = True
 
 # ============================================================================================= #
 
-def colorchange():
+def colormodechange():
     global colormode
     pixels.fill(COLOR_EMPTY)
     colormode = COLOR_MODES[(COLOR_MODES.index(
@@ -175,17 +174,7 @@ def read_config_from_file() -> json:
                 new = tuple(sorted(k.split("+")))
                 keyconf[new] = keyconf[k]
                 del keyconf[k]
-        
-        for i in [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8]:
-            pixels[i] = COLOR_LOAD_SUCCESS
-            pixels.show()
-            time.sleep(0.1)
-        pixels.fill(COLOR_EMPTY)
-        time.sleep(0.5)
-        # pixels.fill(COLOR_LOAD_SUCCESS)
-        # pixels.show()
-        # time.sleep(1)
-        # pixels.fill(COLOR_EMPTY)
+
             
     except OSError as e:
         debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
@@ -214,8 +203,18 @@ def read_config_from_file() -> json:
 
 # Konfiguration der Tasten einlesen
 keyconf = read_config_from_file()
+
+startup_leds = keyconf.get('startup_leds', [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8])    
 color_change_key = keyconf.get('color_change_key', 'key8')
 colormode = keyconf.get('colormode', "wave")
+rage_quit_keys = keyconf.get('rage_quit_keys', '12')
+
+for i in startup_leds:
+    pixels[i] = COLOR_LOAD_SUCCESS
+    pixels.show()
+    time.sleep(0.1)
+pixels.fill(COLOR_EMPTY)
+time.sleep(0.5)
 
 # Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden ->
 # wir verwenden hier bewusst eine Endlosschleife
@@ -225,23 +224,32 @@ while True:
     keys_pressed = hw_keyboard.key_pressed_debounced()
     new_encoder = hw_keyboard.get_encoder_value()
 
+    length = len(keys_pressed)
     # Eine oder mehrere Tasten wurden gedrückt
-    if len(keys_pressed):
+    if length:
         debugprint(keys_pressed)
 
-    # Genau Eine Taste wurde gedrückt und Key 0 -> Mute / Unmute:
-    if len(keys_pressed) == 1 and keys_pressed[0] == "key0":
-        consumer_control.send(ConsumerControlExtended.MUTE)
-    elif len(keys_pressed) > 0:
-        send_keys(tuple(keys_pressed) if len(keys_pressed) > 1 else keys_pressed[0])
+    if length >= rage_quit_keys:
+        sw_keyboard.press(Keycode.ALT)
+        sw_keyboard.press(Keycode.F4)
+        sw_keyboard.release_all()
+        
+    elif length > 0:
+        send_keys(tuple(keys_pressed) if length > 1 else keys_pressed[0])
 
     if encoder != new_encoder:
         # Wenn Taste 8 gedrückt ist, wird aus dem Lautstärkeregler ein Farbregler
-        if leds_on == True and hw_keyboard.__getattr__(color_change_key):
-            if encoder < new_encoder:
-                current_color = (current_color + 7) % 256
+        if leds_on == True and getattr(hw_keyboard, color_change_key):
+            if colormode in ('wave', 'rainbow'):
+                if encoder < new_encoder:
+                    pixelcount = (pixelcount + 7) % 256
+                else:
+                    pixelcount = (pixelcount - 7) % 256
             else:
-                current_color = (current_color - 7) % 256
+                if encoder < new_encoder:
+                    current_color = (current_color + 7) % 256
+                else:
+                    current_color = (current_color - 7) % 256
         # Lautstärkeregelung
         else:
             if encoder > new_encoder:
@@ -251,7 +259,7 @@ while True:
         # den "neuen" Encoder Wert speichern damit wir die nächste Änderung mitbekommen...
         encoder = new_encoder
         debugprint(f"Neuer Encoderwert: {encoder}")
-    
+
     # Leds darstellen
     if leds_on:
         if colormode == "wave":
@@ -260,12 +268,18 @@ while True:
             for i in range(COLOR_CHANGE):
                 pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
                 pixels[i] = wheel(pixel_index & 255)
+        
+        elif colormode == "rainbow":
+            for i in range(COLOR_CHANGE):
+                pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
+                pixels[i] = wheel(pixel_index & 255)
+        
         elif colormode == "single":
             pixels.fill(wheel(current_color))
 
         elif colormode == "wheel":
-            pixelcount = (pixelcount + 1) % 256
-            pixels.fill(wheel(pixelcount & 255))
+            current_color = (current_color + 1) % 256
+            pixels.fill(wheel(current_color & 255))
         
         pixels.show()
     time.sleep(0.03)

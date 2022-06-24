@@ -1,4 +1,5 @@
 {
+  "key0": [["C", "MUTE"]],
   "key1": [["C", "PLAY"]],
   "key2": [["C", "PAUSE"]],
   "key3": [
@@ -17,11 +18,12 @@
     ["Test for unknown command"]
   ],
   "key8": [
-    ["F", "colorchange"]
+    ["F", "colormodechange"]
   ],
   "key6+key7": [
     ["F", "ledtoggle"]
   ],
   "color_change_key": "key8",
-  "ctrl_key": 0
+  "rage_quit_keys": 5,
+  "startup_leds": [8, 9, 10, 5, 6, 7, 4, 3, 2, 0, 1]
 }
