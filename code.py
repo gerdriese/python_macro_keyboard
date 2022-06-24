@@ -1,4 +1,5 @@
 # Allgemeine Imports
+from random import choice
 import time
 import board
 import neopixel
@@ -28,14 +29,15 @@ COLOR_FILE_NOT_FOUND = 0xFF3300  # Konfigurationsdatei konnte nicht gelesen werd
 COLOR_FORMAT_ERROR = 0x330000  # Konfigurationsdatei nicht gefunden oder fehlerhaft
 COLOR_UNKNOWN = 0x424242  # Kommando nicht bekannt
 COLOR_UNDEFINED = 0x0000FF  # Kein Kommando für die Taste hinterlegt
+COLOR_LOAD_SUCCESS = 0x00FF00  # Datei korrekt geladen
+COLOR_EMPTY = 0x000000  # Led ausschalten
 
 # Sollen Debugmeldungen auf die serielle Schnittstelle ausgegeben werden?
-DEBUG = False
+DEBUG = True
 
 # Initialisierung:
-pixels = neopixel.NeoPixel(
-    PIXEL_PIN, NUM_PIXELS, brightness=0.2, auto_write=False, pixel_order=ORDER
-)
+pixels = neopixel.NeoPixel(PIXEL_PIN, NUM_PIXELS,
+                           brightness=0.2, auto_write=False, pixel_order=ORDER)
 
 # USB Endpoints
 consumer_control = ConsumerControl(usb_hid.devices)
@@ -47,6 +49,47 @@ keyboard_layout = KeyboardLayout(sw_keyboard)
 encoder = 0
 pixelcount = 0
 leds_on = True
+COLOR_MODES = ["wave", "rainbow", "single", "wheel"]
+current_color = 0
+leds_on = True
+catch_game = False
+catch_moves = [(1, 2), (0, 3), (0, 3, 5), (1, 2, 4, 6),
+               (3, 7), (2, 6), (3, 5, 7), (4, 6)]
+
+# ----------------------- Hier die zusätzlichen Funktionen hinschreiben ----------------------- #
+
+
+# ============================================================================================= #
+
+def init_catch():
+    global catch_game, catch_pos, catch_lives, catch_cooldown, catch_score
+    catch_game = True
+    catch_pos = 3
+    catch_lives = 3
+    catch_cooldown = 8
+    catch_score = 0
+    pixels.fill(COLOR_EMPTY)
+    pixels[3] = COLOR_UNKNOWN
+    pixels.show()
+    time.sleep(3)
+
+
+def colormodechange():
+    global colormode
+    pixels.fill(COLOR_EMPTY)
+    colormode = COLOR_MODES[(COLOR_MODES.index(
+        colormode) + 1) % len(COLOR_MODES)]
+    debugprint(f"Colormode ist jetzt {colormode}")
+
+
+def ledtoggle():
+    global leds_on
+    if leds_on == True:
+        leds_on = False
+        pixels.fill(COLOR_EMPTY)
+        pixels.show()
+    else:
+        leds_on = True
 
 
 def debugprint(outtext: str) -> None:
@@ -88,9 +131,10 @@ def wheel(pos: int) -> tuple:
     return (r, g, b) if ORDER in (neopixel.RGB, neopixel.GRB) else (r, g, b, 0)
 
 
-def send_keys(keypressed: str) -> None:
-    if keypressed in keyconf:
-        for command in keyconf[keypressed]:
+def send_keys(keyspressed: tuple):
+    debugprint(f"Attempting to send key(s) {keyspressed}")
+    if keyspressed in keyconf:
+        for command in keyconf[keyspressed]:
             # sicher ist SICHER ;)
             command[0] = command[0].upper()
             # P: Key Press - Taste drücken und gedrückt halten
@@ -110,18 +154,31 @@ def send_keys(keypressed: str) -> None:
                 keyboard_layout.write(command[1])
             # M: Consumer Control / Multimedia Kommando
             elif command[0] == "C":
-                consumer_control.send(getattr(ConsumerControlExtended, command[1]))
+                consumer_control.send(
+                    getattr(ConsumerControlExtended, command[1]))
+            # F: Funktion ausführen
+            elif command[0] == "F":
+                if len(command) == 2:
+                    globals()[command[1]]()
+                elif len(command) == 3:
+                    globals()[command[1]](command[2])
+                else:
+                    pixels.fill(COLOR_UNKNOWN)
+                    pixels.show()
+                    time.sleep(1)
+                    pixels.show()
             # Unbekanntes Kommando
             else:
                 pixels.fill(COLOR_UNKNOWN)
                 pixels.show()
                 time.sleep(1)
+                pixels.fill(COLOR_EMPTY)
                 pixels.show()
     else:
         pixels.fill(COLOR_UNDEFINED)
         pixels.show()
         time.sleep(1)
-        pixels.fill(0x000000)
+        pixels.fill(COLOR_EMPTY)
         pixels.show()
 
 
@@ -130,18 +187,32 @@ def read_config_from_file() -> json:
     try:
         with open("keyconf.json", "r") as f:
             keyconf = json.load(f)
+        for k in keyconf:
+            if "+" in k:
+                new = tuple(sorted(k.split("+")))
+                keyconf[new] = keyconf[k]
+                del keyconf[k]
+
     except OSError as e:
         debugprint(f"Konfigurationsdatei konnte nicht gelesen werden!\n{e}")
-        pixels.fill(COLOR_FILE_NOT_FOUND)
-        pixels.show()
         while True:
-            pass
+            pixels.fill(COLOR_FILE_NOT_FOUND)
+            pixels.show()
+            time.sleep(.4)
+            pixels.fill(COLOR_EMPTY)
+            pixels.show()
+            time.sleep(.3)
+
     except ValueError as e:
         debugprint(f"Fehler in der Konfiguratioinsdatei!\n{e}")
-        pixels.fill(COLOR_FORMAT_ERROR)
-        pixels.show()
         while True:
-            pass
+            pixels.fill(COLOR_FORMAT_ERROR)
+            pixels.show()
+            time.sleep(.4)
+            pixels.fill(COLOR_EMPTY)
+            pixels.show()
+            time.sleep(.3)
+
     return keyconf
 
 
@@ -149,6 +220,19 @@ def read_config_from_file() -> json:
 
 # Konfiguration der Tasten einlesen
 keyconf = read_config_from_file()
+
+startup_leds = keyconf.get('startup_leds', [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8])
+color_change_key = keyconf.get('color_change_key', 'key8')
+colormode = keyconf.get('colormode', "wave")
+rage_quit_keys = keyconf.get('rage_quit_keys', '12')
+game_difficulty = keyconf.get('game_difficulty', 8)
+
+for i in startup_leds:
+    pixels[i] = COLOR_LOAD_SUCCESS
+    pixels.show()
+    time.sleep(0.1)
+pixels.fill(COLOR_EMPTY)
+time.sleep(0.5)
 
 # Da unser Python Programm das einzige laufende Programm ist, darf es nicht enden ->
 # wir verwenden hier bewusst eine Endlosschleife
@@ -158,45 +242,127 @@ while True:
     keys_pressed = hw_keyboard.key_pressed_debounced()
     new_encoder = hw_keyboard.get_encoder_value()
 
+    keylen = len(keys_pressed)
     # Eine oder mehrere Tasten wurden gedrückt
-    if len(keys_pressed):
+    if keylen:
         debugprint(keys_pressed)
-
-    # Genau Eine Taste wurde gedrückt:
-    if len(keys_pressed) == 1:
-        # Key 0 -> Mute / Unmute
-        if "key0" in keys_pressed:
-            consumer_control.send(ConsumerControlExtended.MUTE)
-        else:
-            send_keys(keys_pressed[0])
-
-    # LEDs ein- und ausschalten (Tasten 6 + 7 + 8 gleichzeitig drücken)
-    if len(keys_pressed) == 3 and ["key6", "key7", "key8"] == keys_pressed:
-        if leds_on == True:
-            leds_on = False
-            pixels.fill(0x000000)
-            pixels.show()
-        else:
-            leds_on = True
-
-    # Lautstärkeregelung
-    if encoder != new_encoder:
-        if encoder < new_encoder:
-            consumer_control.send(ConsumerControlExtended.VOLUME_UP)
-        else:
-            consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
-        # den "neuen" Encoder Wert speichern damit wir die nächste Änderung mitbekommen...
-        encoder = new_encoder
-        debugprint(f"Neuer Encoderwert: {encoder}")
-
-    # Wheel:
-    pixelcount += 3
-    if pixelcount > 255:
-        pixelcount -= 255
-
-    if leds_on:
-        for i in range(COLOR_CHANGE):
-            pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
-            pixels[i] = wheel(pixel_index & 255)
+    if catch_game:
+        # Verbliebene Leben anzeigen
+        pixels.fill(COLOR_EMPTY)
+        for i in range(catch_lives):
+            pixels[i + 8] = 0xaa1010
+        pixels[catch_pos] = COLOR_UNKNOWN
         pixels.show()
+
+        # Taste wurde gedrückt
+        if keylen == 1:
+            if keys_pressed[0] == "key0":
+                catch_game = False
+                pixels.fill(COLOR_EMPTY)
+
+            # Selbe Position = gewonnen
+            elif (keypos := (int(keys_pressed[0][3]) - 1)) == catch_pos:
+                catch_score += 1
+                for i in range(4):
+                    pixels.fill(COLOR_LOAD_SUCCESS)
+                    pixels.show()
+                    time.sleep(.075)
+                    pixels.fill(COLOR_EMPTY)
+                    pixels.show()
+                    time.sleep(.075)
+
+            # Andere Position = verloren
+            else:
+                for i in range(4):
+                    pixels.fill(COLOR_FORMAT_ERROR)
+                    pixels.show()
+                    time.sleep(.075)
+                    pixels.fill(COLOR_EMPTY)
+                    pixels.show()
+                    time.sleep(.075)
+
+                catch_lives -= 1
+                pixels[keypos] = COLOR_FORMAT_ERROR
+                pixels[catch_pos] = COLOR_LOAD_SUCCESS
+                pixels.show()
+                time.sleep(1.5)
+                if catch_lives == 0:
+                    for i in range(3):
+                        pixels.fill(COLOR_FILE_NOT_FOUND)
+                        pixels.show()
+                        time.sleep(.75)
+                        pixels.fill(COLOR_FORMAT_ERROR)
+                        pixels.show()
+                        time.sleep(.75)
+                    for i in startup_leds[::-1]:
+                        pixels[i] = COLOR_EMPTY
+                        pixels.show()
+                        time.sleep(.2)
+                    pixels.fill(COLOR_EMPTY)
+                    pixels.show()
+                    time.sleep(1)
+                    debugprint(catch_score)
+                    catch_game = False
+
+        if catch_cooldown:
+            catch_cooldown -= 1
+        else:
+            catch_cooldown = 8
+            catch_pos = choice(catch_moves[catch_pos])
+
+    else:
+        # Leds darstellen
+        if leds_on:
+            if colormode == "wave":
+                pixelcount = (pixelcount + 3) % 256
+                # Wheel:
+                for i in range(COLOR_CHANGE):
+                    pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
+                    pixels[i] = wheel(pixel_index & 255)
+
+            elif colormode == "rainbow":
+                for i in range(COLOR_CHANGE):
+                    pixel_index = (i * 256 // NUM_PIXELS) + pixelcount
+                    pixels[i] = wheel(pixel_index & 255)
+
+            elif colormode == "single":
+                pixels.fill(wheel(current_color))
+
+            elif colormode == "wheel":
+                current_color = (current_color + 1) % 256
+                pixels.fill(wheel(current_color & 255))
+
+            pixels.show()
+
+        if keylen >= rage_quit_keys:
+            sw_keyboard.press(Keycode.ALT)
+            sw_keyboard.press(Keycode.F4)
+            sw_keyboard.release_all()
+
+        elif keylen > 0:
+            send_keys(tuple(keys_pressed) if keylen > 1 else keys_pressed[0])
+
+        if encoder != new_encoder:
+            # Wenn Taste 8 gedrückt ist, wird aus dem Lautstärkeregler ein Farbregler
+            if leds_on == True and getattr(hw_keyboard, color_change_key):
+                if colormode in ('wave', 'rainbow'):
+                    if encoder < new_encoder:
+                        pixelcount = (pixelcount + 7) % 256
+                    else:
+                        pixelcount = (pixelcount - 7) % 256
+                else:
+                    if encoder < new_encoder:
+                        current_color = (current_color + 7) % 256
+                    else:
+                        current_color = (current_color - 7) % 256
+            # Lautstärkeregelung
+            else:
+                if encoder > new_encoder:
+                    consumer_control.send(ConsumerControlExtended.VOLUME_UP)
+                else:
+                    consumer_control.send(ConsumerControlExtended.VOLUME_DOWN)
+            # den "neuen" Encoder Wert speichern damit wir die nächste Änderung mitbekommen...
+            encoder = new_encoder
+            debugprint(f"Neuer Encoderwert: {encoder}")
+
     time.sleep(0.03)
