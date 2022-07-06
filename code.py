@@ -5,6 +5,7 @@ import board
 import neopixel
 import usb_hid
 import json
+import os
 
 # HTL Bibliothek
 from lib.htl_keyboard import HtlKeyboard
@@ -167,7 +168,10 @@ def send_keys(keyspressed: tuple):
                     pixels.show()
                     time.sleep(1)
                     pixels.show()
-            # Unbekanntes Kommando
+            # O: Befehl in der Kommandozeile eingeben
+            elif command[0] == "O":
+                os.system(command[1])
+            # Unbekanntes Kommand
             else:
                 pixels.fill(COLOR_UNKNOWN)
                 pixels.show()
@@ -335,9 +339,7 @@ while True:
             pixels.show()
 
         if keylen >= rage_quit_keys:
-            sw_keyboard.press(Keycode.ALT)
-            sw_keyboard.press(Keycode.F4)
-            sw_keyboard.release_all()
+            send_keys(("ragequit"))
 
         elif keylen > 0:
             send_keys(tuple(keys_pressed) if keylen > 1 else keys_pressed[0])
