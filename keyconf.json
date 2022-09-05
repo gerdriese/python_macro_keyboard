@@ -12,7 +12,13 @@
   "key1+key4+key8": [
     ["F", "init_catch"]
   ],
+  "key1": [
+    ["P", "SHIFT"]
+  ],
+  "key2": [
+    ["R"]
+  ],
   "ragequit": [],
   "color_change_key": "key8",
-  "rage_quit_keys": 5
+  "rage_quit_keys": 12
 }

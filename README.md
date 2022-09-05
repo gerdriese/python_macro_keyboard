@@ -48,21 +48,21 @@ Die Konfugiration der Befehle erfolgt in der Datei **keyconf.json** nach folgend
   * Bei **T**: Der Text der "getippt werden soll. \n wird erkannt. 
   * Bei **C**: Die Fernbedienungstaste die gedrückt werden soll. (lib/consumer_control_extended.py)
   * Bei **D**: Wartezeit in Sekunden. Dezimalzahlen erlaubt.
-  * Bei **F**: Name der zusätzlichen Funktion die ausgeführt werden soll. Schon enthalten sind die Funktionen "colormodechange", welche den Farbmodus wechselt, "ledtoggle", welche die LEDs an- oder ausschaltet und "init_catch", welche das kleine Spiel startet. Die Funktionen bitte in die Datei code.py ab Zeile 55 schreiben.
+  * Bei **F**: Name der zusätzlichen Funktion die ausgeführt werden soll. Schon enthalten sind die Funktionen "colormodechange", welche den Farbmodus wechselt, "ledtoggle", welche die LEDs an- oder ausschaltet und "init_catch", welche das kleine Spiel startet. Die Funktionen bitte in die Datei code.py ab Zeile 62 schreiben.
 
 #### Zusatzeigenschaften:
 
-  * **color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten
+  * **color_change_key**: Die Taste, die gedrückt werden muss, damit aus dem Lautstärkeregler der Farbregler wird. Standardmäßig die Taste rechts unten. (key8)
 
   * **std_colormode**: Der Standard Farbmodus. Mögliche Werte sind "wave", "single" und "wheel". Standardmäßig "wave"
 
-  * **rage_quit_keys**: Wenn die Anzahl der gedrückten Tasten gleich oder höher als ist, wird das aktuelle Fenster geschlossen. Standardmäßig deaktiviert. Wenn das passiert, werden alle folgenden Aktionen nicht ausgeführt.
+  * **rage_quit_keys**: Wenn die Anzahl der gedrückten Tasten gleich oder höher als ist, wird das aktuelle Fenster geschlossen. Standardmäßig deaktiviert. Wenn das passiert, wird die aktuelle Tastenkombination außer Kraft gesetzt.
 
-  * **startup_leds**: Die Reihenfolge der LEDs beim Einschalten als Liste. Standardmäßig horizontal in Schlangenlinien von rechts oben nach links unten.
+  * **startup_leds**: Die Reihenfolge der LEDs beim Einschalten als Liste. Standardmäßig [1, 0, 2, 3, 4, 7, 6, 5, 10, 9, 8]. Dies entspricht horizontal in Schlangenlinien von rechts oben nach links unten.
 
-  * **game_difficulty**: Das Delay zwischen den Bewegungen des Punktes im catch-game. Standardmäßig 8.
+  * **game_difficulty**: Das Delay zwischen den Bewegungen des Punktes im catch-game. Standardmäßig 8. Der wert 1 entspricht einem Wert von 0.03 Sekunden.
 
-**Hinweis**: Die oben genannten zusätzlichen Eigenschaften sind alle optional und haben Standardwerte, die verwendet werden, wenn die Eigenschaft nicht angegeben ist.
+**Hinweis**: Die oben genannten zusätzlichen Eigenschaften sind alle optional und haben Standardwerte, die verwendet werden, wenn sie nicht angegeben werden.
 
   ## boot.py
   Die Datei boot.py verhindert, dass das USB Laufwerk beim anschließen der Tastatur eingebunden wird. Im Normalfall wird
